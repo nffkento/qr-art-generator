@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.backends._legacy:_Backend"
+
+[project]
+name = "qr-art-generator"
+version = "1.0.0"
+description = "AI-powered artistic QR code generator using ControlNet + Stable Diffusion"
+requires-python = ">=3.10"
+dependencies = [
+    "qrcode[pil]>=7.4",
+    "Pillow>=10.0",
+    "gradio_client>=1.0",
+]
+
+[project.optional-dependencies]
+replicate = ["replicate>=0.15"]
+verify = ["pyzbar>=0.1.9"]
+all = ["replicate>=0.15", "pyzbar>=0.1.9"]
+
+[project.scripts]
+qr-art = "qr_art_generator.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["qr_art_generator*"]

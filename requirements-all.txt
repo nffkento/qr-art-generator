@@ -1,0 +1,12 @@
+# Core dependencies
+qrcode[pil]>=7.4
+Pillow>=10.0
+gradio_client>=1.0
+
+# Optional: Replicate API backend
+replicate>=0.15
+
+# Optional: QR scannability verification (requires system libzbar)
+# macOS:  brew install zbar
+# Ubuntu: apt install libzbar0
+pyzbar>=0.1.9
