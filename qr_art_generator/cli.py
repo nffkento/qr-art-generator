@@ -1,6 +1,7 @@
 """CLI entry point for QR Art Generator."""
 
 import argparse
+import os
 import sys
 import time
 
@@ -88,21 +89,29 @@ def interactive_mode() -> list[str]:
 
     # --- API backend ---
     print()
-    api_choice = _ask_choice(
-        "🔧 APIバックエンドを選択してください:",
-        [
-            "HuggingFace (768x768, 高速)",
-            "IllusionDiffusion (1024x1024, 高画質)",
-            "Replicate (APIキー必要)",
-        ],
-        default=1,
-    )
+    if mode == 2:
+        # Image blending only works with HuggingFace
+        print("🔧 APIバックエンド: HuggingFace (画像モードはHuggingFaceのみ対応)")
+        api_choice = 1
+    else:
+        api_choice = _ask_choice(
+            "🔧 APIバックエンドを選択してください:",
+            [
+                "HuggingFace (768x768, 高速)",
+                "IllusionDiffusion (1024x1024, 高画質)",
+                "Replicate (APIキー必要)",
+            ],
+            default=1,
+        )
     api_map = {1: "huggingface", 2: "illusion", 3: "replicate"}
     argv.extend(["--api", api_map[api_choice]])
 
     # --- Output ---
     print()
     output = _ask("💾 出力ファイル名", default="qr_art_output.png")
+    # Auto-append .png if user didn't include an extension
+    if "." not in os.path.basename(output):
+        output += ".png"
     argv.extend(["-o", output])
 
     # --- Advanced settings ---
@@ -279,8 +288,6 @@ Examples:
 
 
 def main(argv: list[str] | None = None) -> int:
-    import os
-
     # If no arguments given, launch interactive mode
     if argv is None and len(sys.argv) <= 1:
         argv = interactive_mode()
