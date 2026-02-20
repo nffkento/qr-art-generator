@@ -71,8 +71,8 @@ def blend_qr_with_image(
     style: BlendStyle = BlendStyle.BACKGROUND,
     output_path: str = "qr_blend_output.png",
     logo_path: str | None = None,
-    box_size: int = 10,
-    scale: int = 8,
+    box_size: int = 30,
+    scale: int = 32,
 ) -> str:
     """Create a styled QR code blended with an image.
 
@@ -82,8 +82,8 @@ def blend_qr_with_image(
         style: The blending style to use.
         output_path: Where to save the result.
         logo_path: Optional center logo image path.
-        box_size: Module size for python-qrcode styles (default 10).
-        scale: Scale factor for segno background style (default 8).
+        box_size: Module size for python-qrcode styles (default 30 → ~1350px).
+        scale: Scale factor for segno background style (default 32 → ~1184px).
 
     Returns:
         The output path where the image was saved.
