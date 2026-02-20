@@ -11,6 +11,8 @@ dependencies = [
     "qrcode[pil]>=7.4",
     "Pillow>=10.0",
     "gradio_client>=1.0",
+    "segno>=1.6",
+    "qrcode-artistic>=3.0",
 ]
 
 [project.optional-dependencies]
