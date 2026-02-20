@@ -10,6 +10,132 @@ from qr_art_generator import __version__
 # Sentinel to detect if user explicitly set --controlnet-scale
 _CONTROLNET_SCALE_DEFAULT = object()
 
+# Default negative prompt
+_DEFAULT_NEGATIVE = "ugly, disfigured, low quality, blurry, nsfw"
+
+
+# ---------------------------------------------------------------------------
+# Interactive mode
+# ---------------------------------------------------------------------------
+
+def _ask(prompt: str, default: str = "") -> str:
+    """Prompt the user for input, showing a default value."""
+    if default:
+        raw = input(f"{prompt} [{default}]: ").strip()
+        return raw if raw else default
+    else:
+        while True:
+            raw = input(f"{prompt}: ").strip()
+            if raw:
+                return raw
+            print("  ⚠  入力が必要です。もう一度入力してください。")
+
+
+def _ask_choice(prompt: str, choices: list[str], default: int = 1) -> int:
+    """Prompt the user to select from numbered choices. Returns 1-based index."""
+    print(prompt)
+    for i, choice in enumerate(choices, 1):
+        marker = " ← デフォルト" if i == default else ""
+        print(f"  [{i}] {choice}{marker}")
+    while True:
+        raw = input(f"> ").strip()
+        if not raw:
+            return default
+        try:
+            n = int(raw)
+            if 1 <= n <= len(choices):
+                return n
+        except ValueError:
+            pass
+        print(f"  ⚠  1〜{len(choices)} の数字を入力してください。")
+
+
+def interactive_mode() -> list[str]:
+    """Walk the user through QR art generation interactively.
+
+    Returns:
+        An argv list suitable for argparse (e.g. ['--url', '...', '--prompt', '...']).
+    """
+    print(f"\n🎨 QR Art Generator v{__version__} — Interactive Mode")
+    print("=" * 50)
+
+    argv: list[str] = []
+
+    # --- URL ---
+    print()
+    url = _ask("📎 QRコードに埋め込むURLを入力してください")
+    argv.extend(["--url", url])
+
+    # --- Mode ---
+    print()
+    mode = _ask_choice(
+        "🖼️  モードを選択してください:",
+        [
+            "テキストからQRアート生成 (プロンプトで画像を作る)",
+            "画像にQRコードを埋め込む (既存画像を使う)",
+        ],
+        default=1,
+    )
+
+    if mode == 2:
+        image_path = _ask("  📁 画像ファイルのパスを入力してください")
+        argv.extend(["--image", image_path])
+
+    # --- Prompt ---
+    print()
+    prompt = _ask("✏️  画像のプロンプトを入力してください (例: \"Japanese zen garden, cherry blossoms\")")
+    argv.extend(["--prompt", prompt])
+
+    # --- API backend ---
+    print()
+    api_choice = _ask_choice(
+        "🔧 APIバックエンドを選択してください:",
+        [
+            "HuggingFace (768x768, 高速)",
+            "IllusionDiffusion (1024x1024, 高画質)",
+            "Replicate (APIキー必要)",
+        ],
+        default=1,
+    )
+    api_map = {1: "huggingface", 2: "illusion", 3: "replicate"}
+    argv.extend(["--api", api_map[api_choice]])
+
+    # --- Output ---
+    print()
+    output = _ask("💾 出力ファイル名", default="qr_art_output.png")
+    argv.extend(["-o", output])
+
+    # --- Advanced settings ---
+    print()
+    advanced = input("⚙️  詳細設定を変更しますか? [y/N]: ").strip().lower()
+    if advanced in ("y", "yes"):
+        # ControlNet scale
+        default_cn = "2.0" if api_choice == 2 else "1.1"
+        cn = _ask(f"  ControlNet scale (0.5-2.0)", default=default_cn)
+        argv.extend(["--controlnet-scale", cn])
+
+        # Strength
+        strength = _ask("  Strength (0.0-1.0)", default="0.9")
+        argv.extend(["--strength", strength])
+
+        # Seed
+        seed = _ask("  Seed (-1=ランダム)", default="-1")
+        argv.extend(["--seed", seed])
+
+        # Negative prompt
+        neg = _ask("  Negative prompt", default=_DEFAULT_NEGATIVE)
+        argv.extend(["--negative-prompt", neg])
+
+    # Always overwrite from interactive mode (user just decided the filename)
+    argv.append("--overwrite")
+
+    print()
+    print("─" * 50)
+    print("→ 生成を開始します...")
+    print()
+
+    return argv
+
 
 def create_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
@@ -154,6 +280,11 @@ Examples:
 
 def main(argv: list[str] | None = None) -> int:
     import os
+
+    # If no arguments given, launch interactive mode
+    if argv is None and len(sys.argv) <= 1:
+        argv = interactive_mode()
+
     parser = create_parser()
     args = parser.parse_args(argv)
 
