@@ -97,6 +97,12 @@ def interactive_mode() -> list[str]:
         selected_style = STYLE_ORDER[style_choice - 1]
         argv.extend(["--blend-style", selected_style.value])
 
+        # Invert option
+        print()
+        invert = input("🔄 白黒反転 (黒背景) にしますか？ [y/N]: ").strip().lower()
+        if invert in ("y", "yes"):
+            argv.append("--invert")
+
         # Optional logo
         print()
         logo = input("🏷️  中央にロゴを入れますか？ パスを入力 (空欄でスキップ): ").strip()
@@ -236,6 +242,12 @@ Examples:
              "Only used with --image + styled modes (not background).",
     )
     parser.add_argument(
+        "--invert",
+        action="store_true",
+        help="Invert QR colors (black background + white/image modules). "
+             "Only used with --image.",
+    )
+    parser.add_argument(
         "--output", "-o",
         default="qr_art_output.png",
         help="Output image path (default: qr_art_output.png)",
@@ -371,6 +383,8 @@ def _run_local_blend(args) -> int:
     print(f"\n🖼️  ローカルブレンドモード (AI不要・即時生成)")
     print(f"  Image:  {args.image}")
     print(f"  Style:  {args.blend_style}")
+    if args.invert:
+        print(f"  Invert: ON (黒背景)")
     if args.logo:
         print(f"  Logo:   {args.logo}")
     print()
@@ -389,6 +403,7 @@ def _run_local_blend(args) -> int:
             style=style,
             output_path=args.output,
             logo_path=args.logo,
+            invert=args.invert,
         )
         elapsed = time.time() - start_time
         print(f"  ✓ ブレンド完了 ({elapsed:.2f}s)")

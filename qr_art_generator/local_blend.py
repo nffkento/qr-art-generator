@@ -71,6 +71,7 @@ def blend_qr_with_image(
     style: BlendStyle = BlendStyle.BACKGROUND,
     output_path: str = "qr_blend_output.png",
     logo_path: str | None = None,
+    invert: bool = False,
     box_size: int = 30,
     scale: int = 32,
 ) -> str:
@@ -82,6 +83,7 @@ def blend_qr_with_image(
         style: The blending style to use.
         output_path: Where to save the result.
         logo_path: Optional center logo image path.
+        invert: If True, swap dark/light (black bg + white/image modules).
         box_size: Module size for python-qrcode styles (default 30 → ~1350px).
         scale: Scale factor for segno background style (default 32 → ~1184px).
 
@@ -94,9 +96,9 @@ def blend_qr_with_image(
     os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
 
     if style == BlendStyle.BACKGROUND:
-        return _blend_segno_background(data, image_path, output_path, scale)
+        return _blend_segno_background(data, image_path, output_path, scale, invert)
     else:
-        return _blend_qrcode_styled(data, image_path, style, output_path, logo_path, box_size)
+        return _blend_qrcode_styled(data, image_path, style, output_path, logo_path, box_size, invert)
 
 
 def _blend_segno_background(
@@ -104,16 +106,26 @@ def _blend_segno_background(
     image_path: str,
     output_path: str,
     scale: int,
+    invert: bool = False,
 ) -> str:
     """Blend using segno: image as background, QR pattern on top."""
     import segno
 
     qr = segno.make(data, error="h")
-    qr.to_artistic(
-        background=image_path,
-        target=output_path,
-        scale=scale,
-    )
+    if invert:
+        qr.to_artistic(
+            background=image_path,
+            target=output_path,
+            scale=scale,
+            dark="#fff",
+            light="#000",
+        )
+    else:
+        qr.to_artistic(
+            background=image_path,
+            target=output_path,
+            scale=scale,
+        )
     return output_path
 
 
@@ -124,8 +136,9 @@ def _blend_qrcode_styled(
     output_path: str,
     logo_path: str | None,
     box_size: int,
+    invert: bool = False,
 ) -> str:
-    """Blend using python-qrcode: image colors the dark modules."""
+    """Blend using python-qrcode: image colors the modules."""
     qr = qrcode.QRCode(
         error_correction=qrcode.ERROR_CORRECT_H,
         box_size=box_size,
@@ -136,14 +149,30 @@ def _blend_qrcode_styled(
 
     drawer_class = _MODULE_DRAWERS.get(style, GappedSquareModuleDrawer)
 
-    kwargs = {
-        "image_factory": StyledPilImage,
-        "module_drawer": drawer_class(),
-        "color_mask": ImageColorMask(
-            back_color=(255, 255, 255),
-            color_mask_path=image_path,
-        ),
-    }
+    if invert:
+        # Invert: black background, image colors the LIGHT modules
+        # We invert the QR matrix so python-qrcode draws the "light" areas
+        # as the "dark" modules — then apply the image color to those.
+        for r in range(len(qr.modules)):
+            for c in range(len(qr.modules[r])):
+                qr.modules[r][c] = not qr.modules[r][c]
+        kwargs = {
+            "image_factory": StyledPilImage,
+            "module_drawer": drawer_class(),
+            "color_mask": ImageColorMask(
+                back_color=(0, 0, 0),
+                color_mask_path=image_path,
+            ),
+        }
+    else:
+        kwargs = {
+            "image_factory": StyledPilImage,
+            "module_drawer": drawer_class(),
+            "color_mask": ImageColorMask(
+                back_color=(255, 255, 255),
+                color_mask_path=image_path,
+            ),
+        }
 
     if logo_path and os.path.exists(logo_path):
         kwargs["embeded_image_path"] = logo_path
